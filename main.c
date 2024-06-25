@@ -142,6 +142,25 @@ creds* get_creds(char *search_value) {
 	return NULL;
 }
 
+int delete_creds(char *search_value) {
+	sqlite3 *db = getDBHandle();
+	if(db == NULL) {
+		return 1;
+	}
+
+	char *sql = sqlite3_mprintf("DELETE FROM creds WHERE tag = '%s';", search_value);
+	char *err_msg;
+	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+	if(rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", err_msg);
+		sqlite3_free(err_msg);
+		return 1;
+	}
+	fprintf(stdout, "Deleted a row successfully\n");
+	sqlite3_free(err_msg);
+	return 0;
+}
+
 int print_help () {
 	printf("Usage: secrets <action> [options]\n\n"
 	       "Actions:\n\tsave|s:to save the given credentials.\n"
@@ -207,7 +226,7 @@ int main (int argc, char **argv) {
 			break;
 		case 'd':
 			mode = 3;
-			//delete_creds(argv[2]);
+			delete_creds(argv[2]);
 			break;
 		case 'i':
 			mode = 4;
