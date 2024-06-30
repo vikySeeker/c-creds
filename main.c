@@ -9,31 +9,30 @@ typedef struct creds {
 	char *tag;
 } creds;
 
-int print_help ();
+void print_help ();
 int prepare_env();
+void free_db_stuff(char *err_msg);
 sqlite3* getDBHandle();
 int save_creds (int argc, char **argv);
-creds* get_creds (char *search_value);
+int get_creds_id(char *search_value, sqlite3 *db);
+int get_creds (char *search_value);
 int delete_creds (char *search_value);
 void interactive ();
 
 sqlite3 *db = NULL;
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
-	int i;
-	printf("%d", argc);
-    if(argc == 0) {
-    	puts("No data found!");
-    }
-    for(i = 0; i<argc; i++) {
-       printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    }
-    printf("\n");
-    return 0;
+void free_db_stuff(char *err_msg) {
+	if(err_msg != NULL) {
+		sqlite3_free(err_msg);
+	}
+	if(db != NULL) {
+		sqlite3_close(db);
+		db = NULL;
+	}
 }
 
 sqlite3* getDBHandle () {
-	char *err_msg;
+	char *err_msg = NULL;
 	if (db != NULL) {
 		return db;
 	}
@@ -41,29 +40,28 @@ sqlite3* getDBHandle () {
 	if (rc != SQLITE_OK) {
 		fprintf(stderr, "Database Error: %s\n", sqlite3_errmsg(db));
 		sqlite3_close(db);
+		db = NULL;
 		return NULL;
 	}
 
 	return db;
-
 }
 
 int prepare_env () {
 	sqlite3 *db = getDBHandle();
-	char *err_msg;
+	char *err_msg = NULL;
 	if (db == NULL) {
-		return 0;
+		return 1;
 	}
-	char *sql = "CREATE TABLE IF NOT EXISTS creds(username TEXT, password TEXT, tag TEXT);";
+	char *sql = "CREATE TABLE IF NOT EXISTS creds(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password TEXT, tag TEXT);";
 	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 
 	if (rc != SQLITE_OK) {
 		fprintf(stderr, "SQL error: %s\n", err_msg);
-		sqlite3_free(err_msg);
-		sqlite3_close(db);
+		free_db_stuff(err_msg);
 		return 1;
 	}
-
+	free_db_stuff(err_msg);
 	return 0;
 } 
 
@@ -93,75 +91,128 @@ int save_creds (int argc, char **argv) {
 
 	printf("Username: %s\nPassword: %s\nTag: %s\n", c.username, c.password, c.tag);
 	sqlite3 *db = getDBHandle();
-	char *err_msg = 0;
+	char *err_msg = NULL;
 	int rc = 0;
 
 	if(db == NULL) {
-		return 0;
+		return 1;
 	}
 
 	char *sql = sqlite3_mprintf("INSERT INTO creds(username, password, tag) VALUES ('%q', '%q', '%q');", c.username, c.password, c.tag);
-	rc = sqlite3_exec(db, sql, callback, 0, &err_msg);
+	rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 
 	if(rc != SQLITE_OK) {
 		puts("Cannot store data!");
 		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-		sqlite3_free(err_msg);
-		sqlite3_close(db);
+		free_db_stuff(err_msg);
 		return 1;
 	}
 
 	puts("Executed successfully\n");
-	sqlite3_free(err_msg);
+	free_db_stuff(err_msg);
 	return 0;
 }
 
-creds* get_creds(char *search_value) {
-	sqlite3 *db = getDBHandle();
+int get_creds_id(char *search_value, sqlite3 *db) {
 	if(db == NULL) {
-		return 0;
+		return -1;
 	}
 
-	char *sql = sqlite3_mprintf("SELECT username, password, tag from creds where username like '%%%q%%' or tag like '%%%q%%';", search_value);
-	char *err_msg;
+	char *sql = sqlite3_mprintf("SELECT id, username, tag from creds where username like '%%%q%%' or tag like '%%%q%%';", search_value, search_value);
+	char *err_msg = NULL;
 	sqlite3_stmt *res;
 	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 	if(rc != SQLITE_OK) {
 		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-		sqlite3_free(err_msg);
-		sqlite3_close(db);
-		return NULL;
+		return -1;
 	}
 	int idx = 1;
+	printf("Listing ID, Username and Tag of matched credentials...\n");
 	while(sqlite3_step(res) == SQLITE_ROW) {
-		printf("%d.Username = %s\n  Password = %s\n  Tag = %s\n\n", idx++, sqlite3_column_text(res, 0), sqlite3_column_text(res, 1), sqlite3_column_text(res, 2));
+		printf("\n%d. Username = %s\tTag = %s\n\n", sqlite3_column_int(res, 0), sqlite3_column_text(res, 1), sqlite3_column_text(res, 2));
+		idx++;
 	}
-	printf("Found total of %d credentials...\n", idx-1);
-	sqlite3_free(res);
+	if(idx == 1) {
+		fputs("No Data found in the database...\n", stdin);
+		return -1;
+	}
+	printf("Enter the number to continue:");
+	char buf[10];
+	fgets(buf, sizeof buf, stdin);
 
-	return NULL;
+	int id = -1;
+	if(sscanf(buf, "%d", &id) != 1 || id < 1) {
+		fputs("Invalid input detected... Exiting!\n", stdout);
+		return -1;
+	}
+	return id;
+}
+
+int get_creds(char *search_value) {
+	sqlite3 *db = getDBHandle();
+	char *err_msg = NULL;
+	sqlite3_stmt *res = NULL;
+	if(db == NULL) {
+		return 1;
+	}
+	int id = get_creds_id(search_value, db);
+	if(id == -1) {
+		free_db_stuff(err_msg);
+		return 1;
+	}
+	char *sql = sqlite3_mprintf("SELECT password FROM creds WHERE id = %d LIMIT 1", id);
+	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if(rc != SQLITE_OK) {	
+		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+		free_db_stuff(err_msg);
+		return 1;
+	}
+	if(sqlite3_step(res) != SQLITE_ROW){
+		fputs("No data found... Exiting!\n", stdout);
+		free_db_stuff(err_msg);
+		sqlite3_free(res);
+		return 1;
+	}
+
+	printf("\n\n------------------------\nPassword: %s\n------------------------\n\n", sqlite3_column_text(res, 0));
+	sqlite3_free(res);
+	free_db_stuff(err_msg);
+	return 0;
 }
 
 int delete_creds(char *search_value) {
 	sqlite3 *db = getDBHandle();
+	char *err_msg = NULL;
 	if(db == NULL) {
 		return 1;
 	}
+	int id = get_creds_id(search_value, db);
+	if(id == -1) {
+		free_db_stuff(err_msg);
+		return 1;
+	}
+	printf("\nAre you sure you want to delete the selected credentials?(y/n):");
+	char ch;
+	ch = fgetc(stdin);
+	if(ch != 'y' && ch != 'Y'){
+		fputs("\n\nOperation Aborted... Exiting!\n", stdout);
+		free_db_stuff(err_msg);
+		return 1;
+	}
 
-	char *sql = sqlite3_mprintf("DELETE FROM creds WHERE tag = '%s';", search_value);
-	char *err_msg;
+	char *sql = sqlite3_mprintf("DELETE FROM creds WHERE id = '%d';", id);
 	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
 	if(rc != SQLITE_OK) {
 		fprintf(stderr, "SQL error: %s\n", err_msg);
-		sqlite3_free(err_msg);
+		free_db_stuff(err_msg);
 		return 1;
 	}
-	fprintf(stdout, "Deleted a row successfully\n");
-	sqlite3_free(err_msg);
+	fprintf(stdout, "\n\n\tCredentials deleted successfully!\n");
+	free_db_stuff(err_msg);
 	return 0;
 }
 
-int print_help () {
+void print_help () {
 	printf("Usage: secrets <action> [options]\n\n"
 	       "Actions:\n\tsave|s:to save the given credentials.\n"
 	       "\tget|g: to retrieve a specific account/domain's password based on the given username or tag.\n"
@@ -201,20 +252,21 @@ void interactive () {
 }
 
 int main (int argc, char **argv) {
-	prepare_env();
+	if(prepare_env() == 1)
+		return 1;
 
 	if (argc < 2) {
 		print_help();
 		return 0;
 	}
 	
-	int mode=0;
+	int mode=0, ret_code = 0;
 	char *action = argv[1];
 
 	switch(action[0]) {
 		case 's':
 			mode = 1;
-			save_creds(argc, argv);
+			ret_code = save_creds(argc, argv);
 			break;
 		case 'g':
 			mode = 2;
@@ -222,19 +274,23 @@ int main (int argc, char **argv) {
 				print_help();
 				return 1;
 			}
-			get_creds(argv[2]);
+			ret_code = get_creds(argv[2]);
 			break;
 		case 'd':
 			mode = 3;
-			delete_creds(argv[2]);
+			if(*(argv+2) == 0) {
+				ret_code = 0;
+				break;
+			}
+			ret_code = delete_creds(argv[2]);
 			break;
 		case 'i':
 			mode = 4;
-			interactive();
-			return 0;
+			//interactive();
+			break;
 		default:
 			print_help();
-			return 0;
+			break;
 	}
 
 	return 0;
