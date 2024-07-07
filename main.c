@@ -3,6 +3,8 @@
 #include<sqlite3.h>
 #include<string.h>
 
+
+// struct used to store credentials that are handled by this program
 typedef struct creds {
 	char *username;
 	char *password;
@@ -19,8 +21,14 @@ int get_creds (char *search_value);
 int delete_creds (char *search_value);
 void interactive ();
 
-sqlite3 *db = NULL;
+sqlite3 *db = NULL;	// Global database handler variable
 
+/* 
+ * Fuction used to free the memory used by this program either on success or failure.
+ * it takes err_msgof type char* as argument. the variable that is used to save the error message of previously executed database operation.
+ * it also free the memory of global db handler if it is not null.
+ *
+ * */
 void free_db_stuff(char *err_msg) {
 	if(err_msg != NULL) {
 		sqlite3_free(err_msg);
@@ -31,6 +39,12 @@ void free_db_stuff(char *err_msg) {
 	}
 }
 
+/*
+ * It is responsible for creating database handler that is used by other functions.
+ * it returns address for newly created sqlite3 db handler.
+ * it returns NULL if any error occurs.
+ *
+ * */
 sqlite3* getDBHandle () {
 	char *err_msg = NULL;
 	if (db != NULL) {
@@ -47,6 +61,14 @@ sqlite3* getDBHandle () {
 	return db;
 }
 
+
+/* 
+ * This function has lot of responsiblities, it is called first every time the program is executed.
+ * to prepare the environment for the program to run.
+ * it creates the required database if it is not present and sets up the environment.
+ * it returns an integer 0 if success, 1 if any failure.
+ *
+ * */
 int prepare_env () {
 	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
@@ -65,6 +87,12 @@ int prepare_env () {
 	return 0;
 } 
 
+/*
+ * save_creds is responsible for saving the credentials given by user as commandline argument in the database..
+ * it takes an integer and double char pointer as arguments which is probably the count of char* variables and char* data itself.
+ * it return integer 1 or 0.
+ *
+ * */
 int save_creds (int argc, char **argv) {
 	opterr = 0;
 	char opt;
@@ -113,6 +141,12 @@ int save_creds (int argc, char **argv) {
 	return 0;
 }
 
+/*
+ * get_creds_id retrieves the id the exact credentials that is selected by the user from the console from credentials that are quried by the user from the database.
+ * it takes two arguments the search value which is the vaule given by the user to search for, and the db handler.
+ * these two arguments are passed by the functions that calls this function.
+ *
+ * */
 int get_creds_id(char *search_value, sqlite3 *db) {
 	if(db == NULL) {
 		return -1;
@@ -148,6 +182,12 @@ int get_creds_id(char *search_value, sqlite3 *db) {
 	return id;
 }
 
+/*
+ * get_creds retrieves the pasword of the credentials that matches the users search value.
+ * it uses get_creds_id to get the id of the exact credentials that the user want see.
+ * it takes one arguments the search value which is the vaule given by the user to search for matching credentials.
+ *
+ * */
 int get_creds(char *search_value) {
 	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
@@ -180,6 +220,12 @@ int get_creds(char *search_value) {
 	return 0;
 }
 
+/*
+ * delete_creds deletes the password based on the matching id.
+ * it uses get_creds_id to get the id of the exact credentials that the user want delete.
+ * it takes one arguments the search value which is the vaule given by the user to search for matching credentials.
+ *
+ * */
 int delete_creds(char *search_value) {
 	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
@@ -212,6 +258,10 @@ int delete_creds(char *search_value) {
 	return 0;
 }
 
+/*
+ * the print_help function act as the help section for the user.
+ *
+ * */
 void print_help () {
 	printf("Usage: secrets <action> [options]\n\n"
 	       "Actions:\n\tsave|s:to save the given credentials.\n"
@@ -226,6 +276,12 @@ void print_help () {
 	       "\tFor example, if save is the action the it only check for the first letter 's'.\n");
 }
 
+/*
+ * this function is amied to provied an interactive functionality for this program.
+ * 
+ * BUT IS IS IT COMPLETED.
+ *
+ * */
 void interactive () {
 	puts("welcome to secrets!\n");
 	puts("Please select any action to continue.");
@@ -251,6 +307,10 @@ void interactive () {
 	return;
 }
 
+/* 
+ * This is the main function, what else it may do? as intended it only calls few function to make this program work.
+ *
+ * */
 int main (int argc, char **argv) {
 	if(prepare_env() == 1)
 		return 1;
