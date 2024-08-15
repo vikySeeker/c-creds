@@ -8,6 +8,31 @@
 sqlite3 *db = NULL;	//Global database handler variable
 
 /* 
+* This function has lot of responsiblities, it is called first every time the program is executed.
+* to prepare the environment for the program to run.
+* it creates the required database if it is not present and sets up the environment.
+* it returns an integer 0 if success, 1 if any failure.
+*
+* */
+int prepare_env () {
+	sqlite3 *db = getDBHandle();
+	char *err_msg = NULL;
+	if (db == NULL) {
+		return 1;
+	}
+	char *sql = "CREATE TABLE IF NOT EXISTS creds(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, passwo    rd TEXT, tag TEXT);";
+	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+  
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", err_msg);
+		free_db_stuff(err_msg);
+		return 1;
+	}
+	free_db_stuff(err_msg);
+	return 0;
+ }
+
+/* 
  * Fuction used to free the memory used by this program either on success or failure.
  * it takes err_msgof type char* as argument. the variable that is used to save the error message of previously executed database operation.
  * it also free the memory of global db handler if it is not null.

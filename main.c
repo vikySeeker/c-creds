@@ -4,34 +4,7 @@
 #include "db/db.h"
 
 void print_help ();
-int prepare_env();
 void interactive ();
-
-/* 
- * This function has lot of responsiblities, it is called first every time the program is executed.
- * to prepare the environment for the program to run.
- * it creates the required database if it is not present and sets up the environment.
- * it returns an integer 0 if success, 1 if any failure.
- *
- * */
-int prepare_env () {
-	sqlite3 *db = getDBHandle();
-	char *err_msg = NULL;
-	if (db == NULL) {
-		return 1;
-	}
-	char *sql = "CREATE TABLE IF NOT EXISTS creds(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password TEXT, tag TEXT);";
-	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-
-	if (rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", err_msg);
-		free_db_stuff(err_msg);
-		return 1;
-	}
-	free_db_stuff(err_msg);
-	return 0;
-} 
-
 
 /*
  * the print_help function act as the help section for the user.

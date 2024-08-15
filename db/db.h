@@ -10,6 +10,7 @@ typedef struct creds {
 	char *tag;
 } creds;
 
+int prepare_env();
 void free_db_stuff(char *err_msg);
 sqlite3* getDBHandle();
 int save_creds (int argc, char **argv);
