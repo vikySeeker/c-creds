@@ -3,7 +3,7 @@
 #include<string.h>
 #include<getopt.h>
 
-#include "db.h"
+#include "../includes/db.h"
 
 sqlite3 *db = NULL;	//Global database handler variable
 

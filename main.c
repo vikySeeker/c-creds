@@ -2,16 +2,8 @@
 #include<getopt.h>
 #include<string.h>
 
-#include "db/db.h"
-
-typedef enum _Mode {
-	Help,
-	Save,
-	Get,
-	Delete,
-	Interactive,
-	Invalid
-} Mode;
+#include "includes/db.h"
+#include "includes/modes.h"
 
 void print_invalid();
 void print_help ();
@@ -65,7 +57,7 @@ void interactive () {
 	}
 	return;
 }
-
+ 
 /*
  * parse_mode() prases the first command line argument and comapres it with valid avaliable modes
  * it returns a mode from the list modes defined in the enum Mode
@@ -115,38 +107,25 @@ int main (int argc, char **argv) {
 		return 1;
 	
 	int ret_code = 0;
-	if (argc < 2) {
-		print_invalid(&ret_code);
-	}
 	
 	Mode mode = parse_mode(argv[1]);
-
-	switch(mode) {
-		case Save:
-			ret_code = save_creds(argc, argv);
-			break;
-		case Get:
-			if(argc < 3 || argv[2] == "") {
-				print_invalid(&ret_code);
-			}
-			ret_code = get_creds(argv[2]);
-			break;
-		case Delete:
-			if(*(argv+2) == 0) {
-				print_invalid(&ret_code);
-			}
-			ret_code = delete_creds(argv[2]);
-			break;
-		case Interactive:
-			//interactive();
-			break;
-		case Help:
-			print_help();
-			break;
-		case Invalid:
-			print_invalid(&ret_code);
-			break;
+	if (mode == Help) {
+		print_help();
+		return 0;
 	}
+
+	if (argc != 3) {
+		print_invalid(&ret_code);
+		return ret_code;
+	}
+
+	if (mode == Invalid){
+		print_invalid(&ret_code);
+		return ret_code;
+	}
+	set_mode(mode);
+	process_mode(argv[2]);
+	//creds *c = get_creds();
 
 	return ret_code;
 }
