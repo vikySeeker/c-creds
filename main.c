@@ -1,8 +1,19 @@
 #include<stdio.h>
 #include<getopt.h>
+#include<string.h>
 
 #include "db/db.h"
 
+typedef enum _Mode {
+	Help,
+	Save,
+	Get,
+	Delete,
+	Interactive,
+	Invalid
+} Mode;
+
+void print_invalid();
 void print_help ();
 void interactive ();
 
@@ -17,7 +28,7 @@ void print_help () {
 	       "\tdelete|d: to delete a credential of a given username or name value.\n"
 	       "\tinteractive|i: to start an interactive session.\n\n"
 	       "Options:\n\t-h: help.\n"
-	       "-u: username or email.\n"
+	       "\t-u: username or email.\n"
 	       "\t-p: password.\n"
 	       "\t-t: name of the account or domain of the given credentials.\n\n"
 	       "NOTE:\n\tThis program only checks for the first letter in the action word.\n"
@@ -55,51 +66,87 @@ void interactive () {
 	return;
 }
 
+/*
+ * parse_mode() prases the first command line argument and comapres it with valid avaliable modes
+ * it returns a mode from the list modes defined in the enum Mode
+ * it returns invalid mode when the given modevalue does not match any valid mode.
+ */
+Mode parse_mode(const char *modevalue) {
+	if (strncmp(modevalue, "-h", (size_t)2) == 0 || strncmp(modevalue, "--help", (size_t)6) == 0) {
+		return Help;
+	}
+
+	if (strncmp(modevalue, "save", (size_t)4) == 0)	 {
+		return Save;
+	}
+
+	if (strncmp(modevalue, "get", (size_t)3) == 0)	 {
+		return Get;
+	}
+
+	if (strncmp(modevalue, "delete", (size_t)6) == 0)	 {
+		return Delete;
+	}
+
+	if (strncmp(modevalue, "save", (size_t)4) == 0)	 {
+		return Save;
+	}
+
+	if (strncmp(modevalue, "shell", (size_t)5) == 0 || strncmp(modevalue, "cli", (size_t)3) == 0)	 {
+		return Interactive;
+	}
+
+	return Invalid;
+}
+
+//declare print_invalid function to use if given arguments are invalid!
+void print_invalid (int *ret_code){
+	*ret_code = -1;
+	printf("Invalid use of program! use -h or --help for help\n");
+}
+
 /* 
  * This is the main function, what else it may do? as intended it only calls few function to make this program work.
  *
  * */
 int main (int argc, char **argv) {
+
 	if(prepare_env() == 1)
 		return 1;
-
+	
+	int ret_code = 0;
 	if (argc < 2) {
-		print_help();
-		return 0;
+		print_invalid(&ret_code);
 	}
 	
-	int mode=0, ret_code = 0;
-	char *action = argv[1];
+	Mode mode = parse_mode(argv[1]);
 
-	switch(action[0]) {
-		case 's':
-			mode = 1;
+	switch(mode) {
+		case Save:
 			ret_code = save_creds(argc, argv);
 			break;
-		case 'g':
-			mode = 2;
+		case Get:
 			if(argc < 3 || argv[2] == "") {
-				print_help();
-				return 1;
+				print_invalid(&ret_code);
 			}
 			ret_code = get_creds(argv[2]);
 			break;
-		case 'd':
-			mode = 3;
+		case Delete:
 			if(*(argv+2) == 0) {
-				ret_code = 0;
-				break;
+				print_invalid(&ret_code);
 			}
 			ret_code = delete_creds(argv[2]);
 			break;
-		case 'i':
-			mode = 4;
+		case Interactive:
 			//interactive();
 			break;
-		default:
+		case Help:
 			print_help();
+			break;
+		case Invalid:
+			print_invalid(&ret_code);
 			break;
 	}
 
-	return 0;
+	return ret_code;
 }

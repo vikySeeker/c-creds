@@ -2,4 +2,5 @@ secrets.db
 c-creds
 test/*
 !test/libtomcrypt/
-./.main.c.swp
+*.swp
+*.o
