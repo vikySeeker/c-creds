@@ -15,4 +15,5 @@ typedef struct creds {
 strings* split_input(char*);
 char* get_username();
 char* get_password();
+void free_creds(creds*);
 #endif

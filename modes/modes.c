@@ -3,6 +3,7 @@
 #include "../includes/modes.h"
 #include "../includes/creds.h"
 #include "../includes/mystrings.h"
+#include "../includes/db.h"
 
 Mode mode = Invalid;
 
@@ -17,6 +18,7 @@ Mode get_mode() {
 int process_mode(char *input) {
 	//printf("Parsing input: %s !\n", input);
 	strings *inputs = split_input(input);
+
 	/*printf("Parsed the input successfully!\n");
 	printf("Length of split_input: %d", inputs->length);\
 	for(int i=0; i < inputs->length; i++) {
@@ -33,22 +35,29 @@ int process_mode(char *input) {
 	c.username = get_username();
 	c.password = get_password();
 
-	if(c.password == NULL) {
-		printf("Null check works!\n");
-	}
-	if(c.username == NULL) {
-		printf("Null check works!\n");
-	}
-	
-	printf("Credentials collected successfully!\n");
-	printf("You enterd username or email is: %s\n", c.username);
-	printf("Your entered password is: %s\n", c.password);
-	printf("You enterd tag is: %s\n", c.tag);
-	printf("Your entered space is: %s\n", c.space);
 
-	
-	/*switch	(get_mode()) {
+	if(c.password == NULL) {
+		return 1;
+	}
+
+	switch(get_mode()) {
 		case Save:
-			
-	}*/
+			//call save function from db
+			save_creds(&c);
+			break;
+		case Get:
+			//call get function from db
+			printf("calling get...\n");
+			break;
+		case Delete:
+			//call delete function from db
+			printf("calling delete...\n");
+			break;
+		default:
+			printf("This mode is not supposed to be here!");
+			break;
+	}
+	
+	free_creds(&c);	
+	return 0;
 }

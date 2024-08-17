@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "../includes/creds.h"
 #include "../includes/mystrings.h"
 
@@ -16,10 +17,19 @@ strings* split_input(char *input) {
 char* get_password() {
 	size_t len = MAX_PASS_LEN;
 	char *pass1, *pass2;
+	pass1 = (char*)malloc(len*sizeof(char));
+	pass2 = (char*)malloc(len*sizeof(char));
 	printf("Type your password: ");
-	scanf("%ms", &pass1);
+	fgets(pass1, len, stdin);
 	printf("Re-type your password: ");
-	scanf("%ms", &pass2);
+	fgets(pass2, len, stdin);
+	size_t pass1len, pass2len;
+
+	//trimming newline at the end of buffer
+	pass1len = strnlen(pass1, len);
+	pass2len = strnlen(pass2, len);
+	pass1[pass1len-1] = 0;
+	pass2[pass2len-1] = 0;
 
 	if(strnlen(pass1, len) >= len) {
 		printf("Password length exceeded!\n"
@@ -28,7 +38,7 @@ char* get_password() {
 	}
 
 	if(strncmp(pass2, pass1, len) != 0) {
-		printf("Your Entered password does not match!\n");
+		printf("Your passwords does not match!\n");
 		return NULL;
 	}
 	return pass1;
@@ -37,11 +47,17 @@ char* get_password() {
 char* get_username() {
 	size_t len = MAX_NAME_LEN;
 	char *name;
+	name = (char*)malloc(len*sizeof(char));
 	printf("Type your username or email: ");
-	scanf("%ms", &name);
-	if(strnlen(name, len) == len) {
-		printf("Username exceed the length!\n");
-		return NULL;
-	}
+	fgets(name, len, stdin);
+
+	//trimming newline at the end of buffer
+	size_t namelen = strnlen(name, len);
+	name[namelen-1] = 0;
 	return name;
+}
+
+void free_creds(creds *c) {
+	free(c->username);
+	free(c->password);
 }
