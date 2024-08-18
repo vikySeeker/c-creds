@@ -8,10 +8,15 @@
 #define MAX_NAME_LEN 255
 
 strings* split_input(char *input) {
+	if(input[0] == '/') {
+		printf("Tag cannot be empty!\n\n");
+		return NULL;
+	}
 	string s;
 	s.value = input;
 	s.len = strlen(input);
-	return string_split(&s, "/");
+	char *delim = "/";
+	return string_split(&s, delim);
 }
 
 char* get_password() {

@@ -2,6 +2,11 @@
 #ifndef CREDS_DB_H
 #define CREDS_DB_H
 
+#define CREDS_TABLE "creds"
+#define SPACES_TABLE "spaces"
+
+#define DEFAULT_SPACE "default"
+
 #include<sqlite3.h>
 #include "creds.h"
 

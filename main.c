@@ -108,25 +108,25 @@ int main (int argc, char **argv) {
 		return 1;
 	
 	int ret_code = 0;
-	
-	Mode mode = parse_mode(argv[1]);
-	if (mode == Help) {
-		print_help();
-		return 0;
-	}
 
 	if (argc != 3) {
 		print_invalid(&ret_code);
 		return ret_code;
 	}
+	
+	Mode mode = parse_mode(argv[1]);
 
-	if (mode == Invalid){
-		print_invalid(&ret_code);
-		return ret_code;
+	switch(mode) {
+		case Help:
+			print_help();
+			return 0;
+		case Invalid:
+			print_invalid(&ret_code);
+			return ret_code;
 	}
+
 	set_mode(mode);
 	process_mode(argv[2]);
-	//creds *c = get_creds();
 
 	return ret_code;
 }

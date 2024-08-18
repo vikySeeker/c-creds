@@ -5,9 +5,6 @@
 
 #include "../includes/db.h"
 
-#define CREDS_TABLE  "creds"
-#define SPACES_TABLE "spaces"
-
 sqlite3 *db = NULL;	//Global database handler variable
 
 /* 
@@ -23,12 +20,15 @@ int prepare_env () {
 	if (db == NULL) {
 		return 1;
 	}
-	char *sql = "CREATE TABLE IF NOT EXISTS \
-                     spaces(space TEXT PRIMARY KEY);\
+	char *sql = sqlite3_mprintf("CREATE TABLE IF NOT EXISTS \
+                     '%q'(space TEXT PRIMARY KEY);\
                      CREATE TABLE IF NOT EXISTS \
-                     creds(id INTEGER PRIMARY KEY AUTOINCREMENT, \
+                     '%q'(id INTEGER PRIMARY KEY AUTOINCREMENT, \
                      username TEXT, password TEXT, tag TEXT, \
-                     space TEXT,FOREIGN KEY (space) REFERENCES spaces(space));";
+                     space TEXT,FOREIGN KEY (space) REFERENCES '%q'(space));", 
+		     SPACES_TABLE, 
+		     CREDS_TABLE, 
+		     SPACES_TABLE);
 	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
   
 	if (rc != SQLITE_OK) {
@@ -78,6 +78,45 @@ sqlite3* getDBHandle () {
 	return db;
 }
 
+/*
+ * is_space_exist function checks if a given is exist or not
+ * it return 0 if requested space did not exist. 1 if it exist
+ * it returns -1 if any error occurs.
+ *
+ * */
+int is_space_exist(creds *cred) {	
+	sqlite3 *db = getDBHandle();
+
+	if(db == NULL) {
+		return -1;
+	}
+
+	char *sql = sqlite3_mprintf("SELECT COUNT(*) from '%q' where space='%q';", SPACES_TABLE, cred->space);
+	char *err_msg = NULL;
+	sqlite3_stmt *res;
+	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if(rc != SQLITE_OK) {
+		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+		return -1;
+	}
+	if(sqlite3_step(res) != SQLITE_ROW) {
+		return -1;
+	}
+	
+	int is_space_exist = 0;
+	do {
+		is_space_exist = sqlite3_column_int(res, 0);
+	} while(sqlite3_step(res) == SQLITE_ROW);
+	
+	return is_space_exist;
+}
+
+/*
+ * create_space function creates a new space given by user.
+ * it takes a pointer to creds as a parameter.
+ * user needs to use is_space_exist function before calling create_space.
+ *
+ * */
 int create_space(creds *cred) {	
 	creds c = *cred;
 	sqlite3 *db = getDBHandle();
@@ -103,32 +142,6 @@ int create_space(creds *cred) {
 	return 1;
 }
 
-int is_space_exist(creds *cred) {	
-	sqlite3 *db = getDBHandle();
-
-	if(db == NULL) {
-		return -1;
-	}
-
-	char *sql = sqlite3_mprintf("SELECT COUNT(*) from '%q' where space='%q';", SPACES_TABLE, cred->space);
-	char *err_msg = NULL;
-	sqlite3_stmt *res;
-	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if(rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-		return -1;
-	}
-	if(sqlite3_step(res) != SQLITE_ROW) {
-		return -1;
-	}
-	
-	int is_space_exist = 1;
-	do {
-		is_space_exist = sqlite3_column_int(res, 0);
-	} while(sqlite3_step(res) == SQLITE_ROW);
-	
-	return is_space_exist;
-}
 
 /*
  * save_creds is responsible for saving the credentials given by user as commandline argument in the database..
@@ -249,7 +262,7 @@ int get_creds(creds *cred) {
 	sqlite3_free(res);
 	free_db_stuff(err_msg);
 	return 0;
-}*/
+} */
 
 /*
  * delete_creds deletes the password based on the matching id.

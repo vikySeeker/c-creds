@@ -1,4 +1,5 @@
-#include<stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "../includes/modes.h"
 #include "../includes/creds.h"
@@ -15,30 +16,36 @@ Mode get_mode() {
 	return mode;
 }
 
+void _print_creds(creds *c) {
+	printf("Username: %s\n", c->username);
+	printf("Password: %s\n", c->password);
+	printf("Space: %s\n", c->space);
+	printf("Tag: %s\n", c->tag);
+}
+
 int process_mode(char *input) {
 	//printf("Parsing input: %s !\n", input);
 	strings *inputs = split_input(input);
-
-	/*printf("Parsed the input successfully!\n");
-	printf("Length of split_input: %d", inputs->length);\
-	for(int i=0; i < inputs->length; i++) {
-		printf("Word %d: %s\n", i+1, inputs->arr[i].value);
-	}*/
-
-	if(inputs->length != 2) {
-		return -1;
+	if(inputs == NULL || inputs->length == 0) {
+		printf("Invalid values provided!\n");
+		free(inputs);
+		return 5;
 	}
-
 	creds c;
 	c.tag = inputs->arr[0].value;
-	c.space = inputs->arr[1].value;
+
+	if(inputs->length == 2)
+		c.space = inputs->arr[1].value;
+	else
+		c.space = DEFAULT_SPACE;
+
 	c.username = get_username();
 	c.password = get_password();
-
 
 	if(c.password == NULL) {
 		return 1;
 	}
+	_print_creds(&c);
 
 	switch(get_mode()) {
 		case Save:
@@ -58,6 +65,8 @@ int process_mode(char *input) {
 			break;
 	}
 	
-	free_creds(&c);	
+	free_creds(&c);
+	free(inputs);
+
 	return 0;
 }
