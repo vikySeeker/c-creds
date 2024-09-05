@@ -17,6 +17,7 @@ Mode get_mode() {
 }
 
 void _print_creds(creds *c) {
+	printf("Printing creds...\n");
 	printf("Username: %s\n", c->username);
 	printf("Password: %s\n", c->password);
 	printf("Space: %s\n", c->space);
@@ -37,15 +38,18 @@ int process_mode(char *input) {
 	if(inputs->length == 2)
 		c.space = inputs->arr[1].value;
 	else
-		c.space = DEFAULT_SPACE;
+		c.space = NO_SPACE;
 
-	c.username = get_username();
-	c.password = get_password();
+	if(get_mode() == Save) {
+		c.username = get_username();
+		c.password = get_password();
+		c.space = DEFAULT_SPACE;
+	}
 
 	if(c.password == NULL) {
 		return 1;
 	}
-	_print_creds(&c);
+	//_print_creds(&c);
 
 	switch(get_mode()) {
 		case Save:
@@ -54,19 +58,19 @@ int process_mode(char *input) {
 			break;
 		case Get:
 			//call get function from db
-			printf("calling get...\n");
+			get_creds(&c);
 			break;
 		case Delete:
 			//call delete function from db
-			printf("calling delete...\n");
 			break;
 		default:
 			printf("This mode is not supposed to be here!");
 			break;
 	}
-	
-	free_creds(&c);
-	free(inputs);
 
+	if(get_mode() == Save) {
+		free_creds(&c);
+	}
+	free(inputs);
 	return 0;
 }

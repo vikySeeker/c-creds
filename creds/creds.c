@@ -63,6 +63,8 @@ char* get_username() {
 }
 
 void free_creds(creds *c) {
-	free(c->username);
-	free(c->password);
+	if(c->username != NULL) {
+		free(c->username);
+		free(c->password);
+	}
 }

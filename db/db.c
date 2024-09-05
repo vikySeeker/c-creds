@@ -231,7 +231,7 @@ int get_creds_id(char *search_value, sqlite3 *db) {
  * it uses get_creds_id to get the id of the exact credentials that the user want see.
  * it takes one arguments the search value which is the vaule given by the user to search for matching credentials.
  *
- * 
+ * */ 
 int get_creds(creds *cred) {
 	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
@@ -239,6 +239,50 @@ int get_creds(creds *cred) {
 	if(db == NULL) {
 		return 1;
 	}
+	
+	creds c = *cred;
+
+	if(is_space_exist(cred) == 1 && !(strncmp(c.space, NO_SPACE, (size_t)12) == 0)) {
+		char *sql = sqlite3_mprintf("SELECT username, tag, password FROM '%q' WHERE tag = '%q' AND space='%q' LIMIT 1", CREDS_TABLE, c.tag, c.space);
+
+		//get the creds with matching tag and space from the db
+		int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+		if(rc != SQLITE_OK) {
+			fprintf(stderr, "SQL Error: %s\n", sqlite3_errmsg(db));
+		}
+		if(sqlite3_step(res) != SQLITE_ROW){
+			fputs("No data found... Exiting!\n", stdout);
+			free_db_stuff(err_msg);
+			sqlite3_free(res);
+			return 1;
+		}
+
+		printf("Username: %s\n", sqlite3_column_text(res, 0));
+		printf("Tag: %s\n", sqlite3_column_text(res, 1));
+		printf("Password: %s\n", sqlite3_column_text(res, 2));
+		sqlite3_free(res);
+		free_db_stuff(err_msg);
+	} else {
+		char *sql = sqlite3_mprintf("SELECT tag, space FROM '%q' WHERE tag = '%q'", CREDS_TABLE, c.tag);
+		int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+		if(rc != SQLITE_OK) {
+			fprintf(stderr, "SQL Error: %s\n", sqlite3_errmsg(db));
+			return 1;
+		}
+		if(sqlite3_step(res) != SQLITE_ROW){
+			fputs("No data found... Exiting!\n", stdout);
+			free_db_stuff(err_msg);
+			sqlite3_free(res);
+			return 1;
+		}
+		sqlite3_reset(res);
+		printf("Listing matching tag and spaces...\n");
+		while(sqlite3_step(res) == SQLITE_ROW) {
+			printf("%s/%s\n", sqlite3_column_text(res, 0), sqlite3_column_text(res, 1));
+		}
+	}
+
+	/*
 	int id = get_creds_id(cred->tag, db);
 	if(id == -1) {
 		free_db_stuff(err_msg);
@@ -261,8 +305,9 @@ int get_creds(creds *cred) {
 	printf("\n\n------------------------\nPassword: %s\n------------------------\n\n", sqlite3_column_text(res, 0));
 	sqlite3_free(res);
 	free_db_stuff(err_msg);
+	*/
 	return 0;
-} */
+}
 
 /*
  * delete_creds deletes the password based on the matching id.
