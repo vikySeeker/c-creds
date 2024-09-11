@@ -109,11 +109,11 @@ int main (int argc, char **argv) {
 	
 	int ret_code = 0;
 
-	if (argc <= 1) {
+	if(argc <= 1) {
 		print_invalid(&ret_code);
 		return ret_code;
 	}
-	
+
 	Mode mode = parse_mode(argv[1]);
 
 	if (mode != Help && argc != 3) {
