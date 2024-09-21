@@ -186,44 +186,35 @@ int save_creds (creds *cred) {
 }
 
 /*
- * get_creds_id retrieves the id the exact credentials that is selected by the user from the console from credentials that are quried by the user from the database.
- * it takes two arguments the search value which is the vaule given by the user to search for, and the db handler.
- * these two arguments are passed by the functions that calls this function.
- *
+ * list_creds lists the available matching creds from the creds table;
+ * it takes creds *cred as an argument to search for matching creds.
+ * it does not return anything.
  * */
-int get_creds_id(char *search_value, sqlite3 *db) {
-	if(db == NULL) {
-		return -1;
-	}
-
-	char *sql = sqlite3_mprintf("SELECT id, username, tag from '%q' where username like '%%%q%%' or tag like '%%%q%%';", CREDS_TABLE, search_value, search_value);
+void list_creds(creds *cred) {
+	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
-	sqlite3_stmt *res;
+	sqlite3_stmt *res = NULL;
+	if(db == NULL) {
+		return;
+	}
+	creds c = *cred;
+	char *sql = sqlite3_mprintf("SELECT tag, space FROM '%q' WHERE tag = '%q'", CREDS_TABLE, c.tag);
 	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 	if(rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-		return -1;
+		fprintf(stderr, "SQL Error: %s\n", sqlite3_errmsg(db));
+		return;
 	}
-	int idx = 1;
-	printf("Listing ID, Username and Tag of matched credentials...\n");
+	if(sqlite3_step(res) != SQLITE_ROW){
+		fputs("No data found... Exiting!\n", stdout);
+		free_db_stuff(err_msg);
+		sqlite3_free(res);
+		return;
+	}
+	sqlite3_reset(res);
+	printf("Listing matching tag and spaces...\n");
 	while(sqlite3_step(res) == SQLITE_ROW) {
-		printf("\n%d. Username = %s\tTag = %s\n\n", sqlite3_column_int(res, 0), sqlite3_column_text(res, 1), sqlite3_column_text(res, 2));
-		idx++;
+		printf("%s/%s\n", sqlite3_column_text(res, 0), sqlite3_column_text(res, 1));
 	}
-	if(idx == 1) {
-		fputs("No Data found in the database...\n", stdin);
-		return -1;
-	}
-	printf("Enter the number to continue:");
-	char buf[10];
-	fgets(buf, sizeof buf, stdin);
-
-	int id = -1;
-	if(sscanf(buf, "%d", &id) != 1 || id < 1) {
-		fputs("Invalid input detected... Exiting!\n", stdout);
-		return -1;
-	}
-	return id;
 }
 
 /*
@@ -263,49 +254,8 @@ int get_creds(creds *cred) {
 		sqlite3_free(res);
 		free_db_stuff(err_msg);
 	} else {
-		char *sql = sqlite3_mprintf("SELECT tag, space FROM '%q' WHERE tag = '%q'", CREDS_TABLE, c.tag);
-		int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-		if(rc != SQLITE_OK) {
-			fprintf(stderr, "SQL Error: %s\n", sqlite3_errmsg(db));
-			return 1;
-		}
-		if(sqlite3_step(res) != SQLITE_ROW){
-			fputs("No data found... Exiting!\n", stdout);
-			free_db_stuff(err_msg);
-			sqlite3_free(res);
-			return 1;
-		}
-		sqlite3_reset(res);
-		printf("Listing matching tag and spaces...\n");
-		while(sqlite3_step(res) == SQLITE_ROW) {
-			printf("%s/%s\n", sqlite3_column_text(res, 0), sqlite3_column_text(res, 1));
-		}
+		list_creds(cred);
 	}
-
-	/*
-	int id = get_creds_id(cred->tag, db);
-	if(id == -1) {
-		free_db_stuff(err_msg);
-		return 1;
-	}
-	char *sql = sqlite3_mprintf("SELECT password FROM '%q' WHERE id = %d LIMIT 1", CREDS_TABLE, id);
-	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-	if(rc != SQLITE_OK) {	
-		fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
-		free_db_stuff(err_msg);
-		return 1;
-	}
-	if(sqlite3_step(res) != SQLITE_ROW){
-		fputs("No data found... Exiting!\n", stdout);
-		free_db_stuff(err_msg);
-		sqlite3_free(res);
-		return 1;
-	}
-
-	printf("\n\n------------------------\nPassword: %s\n------------------------\n\n", sqlite3_column_text(res, 0));
-	sqlite3_free(res);
-	free_db_stuff(err_msg);
-	*/
 	return 0;
 }
 
@@ -314,35 +264,30 @@ int get_creds(creds *cred) {
  * it uses get_creds_id to get the id of the exact credentials that the user want delete.
  * it takes one arguments the search value which is the vaule given by the user to search for matching credentials.
  *
- *
+ * */
 int delete_creds(creds *cred) {
 	sqlite3 *db = getDBHandle();
 	char *err_msg = NULL;
+	sqlite3_stmt *res = NULL;
 	if(db == NULL) {
 		return 1;
 	}
-	int id = get_creds_id(cred->tag, db);
-	if(id == -1) {
-		free_db_stuff(err_msg);
-		return 1;
-	}
-	printf("\nAre you sure you want to delete the selected credentials?(y/n):");
-	char ch;
-	ch = fgetc(stdin);
-	if(ch != 'y' && ch != 'Y'){
-		fputs("\n\nOperation Aborted... Exiting!\n", stdout);
-		free_db_stuff(err_msg);
-		return 1;
-	}
 
-	char *sql = sqlite3_mprintf("DELETE FROM '%q' WHERE id = '%d';", CREDS_TABLE, id);
-	int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-	if(rc != SQLITE_OK) {
-		fprintf(stderr, "SQL error: %s\n", err_msg);
-		free_db_stuff(err_msg);
-		return 1;
+	creds c = *cred;
+	if(is_space_exist(cred) == 1 && !(strncmp(c.space, NO_SPACE, (size_t)12) == 0)) {
+		char *sql = sqlite3_mprintf("DELETE FROM '%q' WHERE space = '%q' AND tag = '%q'", CREDS_TABLE, c.space, c.tag);
+
+		int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+		if(rc != SQLITE_OK) {
+			fprintf(stderr, "SQL ERROR: %s\n", err_msg);
+			return 1;
+		}
+		fprintf(stdout, "\nCredentials deleted successfully!\n\n");
+
+	
+	} else {
+		list_creds(cred);
 	}
-	fprintf(stdout, "\n\n\tCredentials deleted successfully!\n");
 	free_db_stuff(err_msg);
 	return 0;
-}*/
+}

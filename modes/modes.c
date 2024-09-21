@@ -43,7 +43,7 @@ int process_mode(char *input) {
 	if(get_mode() == Save) {
 		c.username = get_username();
 		c.password = get_password();
-		c.space = DEFAULT_SPACE;
+		//c.space = DEFAULT_SPACE;
 	}
 
 	if(c.password == NULL) {
@@ -62,6 +62,7 @@ int process_mode(char *input) {
 			break;
 		case Delete:
 			//call delete function from db
+			delete_creds(&c);
 			break;
 		default:
 			printf("This mode is not supposed to be here!");
