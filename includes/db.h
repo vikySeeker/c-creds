@@ -17,9 +17,9 @@ int is_space_exist(creds*);
 int is_cred_exist(creds*);
 int create_space(creds *c);
 int save_creds (creds*);
-int list_creds (creds*);
+void list_creds (creds*);
 int get_creds (creds*);
-int update_creds(creds*)
+int update_creds(creds*);
 int delete_creds (creds*);
 
 #endif
