@@ -91,7 +91,7 @@ int is_space_exist(creds *cred) {
 		return -1;
 	}
 
-	char *sql = sqlite3_mprintf("SELECT COUNT(*) from '%q' where space='%q';", SPACES_TABLE, cred->space);
+	char *sql = sqlite3_mprintf("SELECT COUNT(*) FROM '%q' WHERE space='%q';", SPACES_TABLE, cred->space);
 	char *err_msg = NULL;
 	sqlite3_stmt *res;
 	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
@@ -109,6 +109,31 @@ int is_space_exist(creds *cred) {
 	} while(sqlite3_step(res) == SQLITE_ROW);
 	
 	return is_space_exist;
+}
+
+int is_cred_exist(creds *cred) {
+	sqlite3 *db = getDBHandle();
+
+	if(db == NULL) {
+		return -1;
+	}
+
+	char *sql = sqlite3_mprintf("SELECT username FROM '%q' WHERE tag='%q' AND space='%q' LIMIT 1", CREDS_TABLE, cred->tag, cred->space);
+	char *err_msg = NULL;
+	sqlite3_stmt *res;
+	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	if(rc != SQLITE_OK) {
+		fprintf(stderr, "SQL ERROR: %s\n", sqlite3_errmsg(db));
+		return -1;
+	}
+
+	if(sqlite3_step(res) != SQLITE_ROW) {
+		return 0;
+	}
+
+	const char *username = sqlite3_column_text(res, 0);
+	printf("Cred combination %s/%s already exists with username: %s", cred->tag, cred->space, username);
+	return 1;
 }
 
 /*
@@ -158,6 +183,11 @@ int save_creds (creds *cred) {
 	if(db == NULL) {
 		return 1;
 	}
+	
+	if(is_cred_exist(cred) == 1) {
+		return 1;
+	}
+
 	if (is_space_exist(cred) != 1)  {
 		printf("\nThe requested space %s, did not exist!\nDo you want to create a new one? (y/N) ", cred->space);
 		char answer = 'y';
@@ -256,6 +286,13 @@ int get_creds(creds *cred) {
 	} else {
 		list_creds(cred);
 	}
+	return 0;
+}
+
+/*
+ * TODO: Implement this update function to update user creds.
+ * */
+int update_creds(creds *cred) {
 	return 0;
 }
 

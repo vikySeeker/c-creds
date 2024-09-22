@@ -14,10 +14,12 @@ int prepare_env();
 void free_db_stuff(char *err_msg);
 sqlite3* getDBHandle();
 int is_space_exist(creds*);
+int is_cred_exist(creds*);
 int create_space(creds *c);
 int save_creds (creds*);
-int get_creds_id(char *, sqlite3*);
+int list_creds (creds*);
 int get_creds (creds*);
+int update_creds(creds*)
 int delete_creds (creds*);
 
 #endif
